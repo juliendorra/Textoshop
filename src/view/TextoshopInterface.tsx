@@ -21,6 +21,7 @@ import { TextMergerMenu } from './components/TextMergerMenu';
 import { RangeUtils } from './components/TextSelection';
 import { TonePicker } from './components/TonePicker';
 import { Toolbar } from './components/Toolbar';
+import { GuidedTutorial } from './components/GuidedTutorial';
 import { ModelLoadOverlay, ModelStatusChip } from './components/ModelStatus';
 import { Utils } from './Utils';
 
@@ -186,6 +187,7 @@ export default function TextoshopInterface(props: { children?: React.ReactNode }
     <>
       {!modelReady && <ModelLoadOverlay />}
       <ModelStatusChip />
+      <GuidedTutorial />
       <div style={{ display: 'flex', flexDirection: 'row', height: '100vh', background: '#F2EEF0' }}>
         <div id="background" style={{ position: 'relative', display: 'flex', justifyContent: 'center', flexGrow: 4, cursor: cursor }}
           onMouseDown={(e) => {
