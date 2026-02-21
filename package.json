@@ -13,6 +13,7 @@
   "dependencies": {
     "@blueprintjs/icons": "^5.9.0",
     "@formkit/auto-animate": "^0.8.2",
+    "@mlc-ai/web-llm": "^0.2.81",
     "@nextui-org/react": "^2.4.2",
     "@types/slate": "^0.47.15",
     "chroma-js": "^2.4.2",
@@ -21,7 +22,6 @@
     "framer-motion": "^11.2.12",
     "immutable": "^5.0.0-beta.5",
     "jsonrepair": "^3.8.0",
-    "openai": "^4.28.4",
     "react": "^18.2.0",
     "react-arborist": "^3.4.0",
     "react-dom": "^18.2.0",
@@ -33,7 +33,6 @@
     "slate": "^0.102.0",
     "slate-history": "^0.100.0",
     "slate-react": "^0.102.0",
-    "zod": "^3.23.8",
     "zustand": "^4.5.1"
   },
   "devDependencies": {

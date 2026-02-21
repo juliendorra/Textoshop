@@ -7,13 +7,16 @@ import ReactMarkdown from 'react-markdown';
 import { Transforms, createEditor } from "slate";
 import { withHistory } from "slate-history";
 import { Editable, Slate, withReact } from "slate-react";
-import { MessageGPT, openai, useModelStore } from "../model/Model";
+import { getEngine, useLLMEngineStore } from "../model/LLMEngine";
+import { MessageGPT, useModelStore } from "../model/Model";
+import { ModelLoadOverlay, ModelStatusChip } from "../view/components/ModelStatus";
 import { TextLayerUtils } from "../model/utils/TextLayerUtils";
 import { useStudyStore } from "./StudyModel";
 
 
 
 export default function BaselineInterface(props: { children?: React.ReactNode }) {
+  const modelReady = useLLMEngineStore(state => !!state.loadedModelId && !state.isLoading);
   const [textInputValue, setTextInputValue] = useState("");
   const [gptMessages, setGptMessages] = useState<MessageGPT[]>([
   ]);
@@ -52,10 +55,10 @@ export default function BaselineInterface(props: { children?: React.ReactNode })
 
     useStudyStore.getState().logEvent("CHATGPT_PROMPTED", { prompt: textInputValue });
 
-    // Send the message to ChatGPT
+    // Send the message to the local LLM
     (async () => {
-      const stream = await openai.chat.completions.create({
-        model: 'gpt-4o',
+      const engine = getEngine();
+      const stream = await engine.chat.completions.create({
         messages: messages,
         stream: true,
       });
@@ -170,6 +173,8 @@ export default function BaselineInterface(props: { children?: React.ReactNode })
 
   return (
     <>
+      {!modelReady && <ModelLoadOverlay />}
+      <ModelStatusChip />
       <div style={{ display: 'flex', flexDirection: 'row', height: '100vh', width: '100%', background: '#F2EEF0' }}>
         {/* Text Editor Side */}
         <div style={{ minWidth: 720, height: '100%', width: '70%', display: 'flex', flexDirection: 'row', justifyContent: 'center' }}>

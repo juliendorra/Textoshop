@@ -11,6 +11,32 @@ export class PromptParserUtils {
             const start = json.indexOf("```json") + 7;
             const end = json.indexOf("```", start);
             json = json.substring(start, end);
+        } else if (json.includes("```")) {
+            // Also handle bare ``` fences without "json" tag
+            const start = json.indexOf("```") + 3;
+            const end = json.indexOf("```", start);
+            if (end > start) {
+                json = json.substring(start, end);
+            }
+        }
+
+        // Small local models often wrap JSON in preamble/commentary.
+        // Try to extract the outermost { ... } or [ ... ] if present.
+        const firstBrace = json.indexOf("{");
+        const firstBracket = json.indexOf("[");
+        if (firstBrace !== -1 || firstBracket !== -1) {
+            let startChar: string;
+            let endChar: string;
+            let startIdx: number;
+            if (firstBracket === -1 || (firstBrace !== -1 && firstBrace < firstBracket)) {
+                startChar = "{"; endChar = "}"; startIdx = firstBrace;
+            } else {
+                startChar = "["; endChar = "]"; startIdx = firstBracket;
+            }
+            const lastIdx = json.lastIndexOf(endChar);
+            if (lastIdx > startIdx) {
+                json = json.substring(startIdx, lastIdx + 1);
+            }
         }
 
         // Now, try parsing the JSON

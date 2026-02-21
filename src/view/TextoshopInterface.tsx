@@ -7,6 +7,7 @@ import { CgArrowsBreakeH, CgArrowsMergeAltH } from 'react-icons/cg';
 import { MdContentCopy, MdContentCut, MdContentPaste } from 'react-icons/md';
 import { BaseRange, Editor, Node as SlateNode } from 'slate';
 import { ReactEditor } from 'slate-react';
+import { useLLMEngineStore } from '../model/LLMEngine';
 import { TextSelection, textFieldEditors, tools, useModelStore } from '../model/Model';
 import { TextConsolidater } from '../model/tools/promptTools/TextConsolidater';
 import { TextDistributer } from '../model/tools/promptTools/TextDistributer';
@@ -20,6 +21,7 @@ import { TextMergerMenu } from './components/TextMergerMenu';
 import { RangeUtils } from './components/TextSelection';
 import { TonePicker } from './components/TonePicker';
 import { Toolbar } from './components/Toolbar';
+import { ModelLoadOverlay, ModelStatusChip } from './components/ModelStatus';
 import { Utils } from './Utils';
 
 
@@ -35,6 +37,8 @@ export default function TextoshopInterface(props: { children?: React.ReactNode }
   const [elementDroppedTimestamp, setElementDroppedTimestamp] = useState<number>(0);
   const [textMergerMenuPos, setTextMergerMenuPos] = useState<{ x: number, y: number } | null>(null);
   const [contextualMenuPosition, setContextualMenuPosition] = useState<{ x: number, y: number } | null>(null);
+
+  const modelReady = useLLMEngineStore(state => !!state.loadedModelId && !state.isLoading);
 
   useEffect(() => {
     // Install key up/listener
@@ -180,6 +184,8 @@ export default function TextoshopInterface(props: { children?: React.ReactNode }
 
   return (
     <>
+      {!modelReady && <ModelLoadOverlay />}
+      <ModelStatusChip />
       <div style={{ display: 'flex', flexDirection: 'row', height: '100vh', background: '#F2EEF0' }}>
         <div id="background" style={{ position: 'relative', display: 'flex', justifyContent: 'center', flexGrow: 4, cursor: cursor }}
           onMouseDown={(e) => {

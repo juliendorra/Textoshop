@@ -81,8 +81,7 @@ export class TextResizer extends PromptTool<string, number, string> {
             const subPrompts = diffs.map(diff => {
                 const length = Math.round(nbWords + wordDiffPerSentence + diff);
 
-                return new SimplePrompt({ 
-                        model: 'gpt-4o-mini-2024-07-18', 
+                return new SimplePrompt({
                         prompt: `${sentence}\n\n${isShortened ? "Shorten" : "Lengthen"} to ${length} words by ${isShortened ? "removing" : "adding"} ${wordDiffPerSentence + diff} words.`,
                 });
             });

@@ -1,12 +1,9 @@
-import OpenAI from 'openai';
-import { zodResponseFormat } from 'openai/helpers/zod';
-import { ChatCompletionTool } from 'openai/resources/index.mjs';
 import { BaseEditor, BaseSelection, Editor, Node, Point, Transforms } from 'slate';
 import { ReactEditor } from 'slate-react';
-import { z } from 'zod';
 import { create } from 'zustand';
 import { useStudyStore } from '../study/StudyModel';
 import { LAYER_COLOR_PALETTE } from '../view/components/LayerManager';
+import { getEngine } from './LLMEngine';
 import { DrawTool } from './tools/toolbarTools/DrawTool';
 import { EraserTool } from './tools/toolbarTools/EraserTool';
 import { PluralizerTool, SingularizerTool } from './tools/toolbarTools/PluralizerTool';
@@ -21,29 +18,6 @@ import { useUndoModelStore } from './UndoModel';
 import { SlateUtils } from './utils/SlateUtils';
 import { TextAnimationUtils } from './utils/TextAnimationUtils';
 import { TextLayerUtils } from './utils/TextLayerUtils';
-
-
-// Get the key from the URL parameters
-const hashSplitted = window.location.hash.split("?");
-const search = hashSplitted[hashSplitted.length-1]
-const params = new URLSearchParams(search);
-const key = params.get('k');
-
-let openaiKey = ""
-if (!key) {
-    if ("VITE_OPENAI_API_KEY" in import.meta.env) {
-        openaiKey = import.meta.env.VITE_OPENAI_API_KEY;
-    } /*else {
-        throw new Error("No key provided in the URL parameters");
-    }*/
-} else {
-    openaiKey = atob(key)
-}
-
-export const openai = new OpenAI({
-    apiKey: openaiKey,
-    dangerouslyAllowBrowser: true
-});
 
 
 export interface TextFieldAnimation {
@@ -85,9 +59,7 @@ export interface TextSelection {
 export interface ExecutablePrompt {
     prompt: string
     model?: string
-    tools?: Array<ChatCompletionTool>
     json?: boolean,
-    response_format?: {zodObject: z.ZodType, name: string}
 }
 
 export interface PromptResult {
@@ -169,7 +141,6 @@ interface ModelAction {
     addLayer: (layer: HiearchicalLayer, parentId: number | null, idWithinParent: number) => void
     setTone: (tone: ToneLevel[]) => void
     setToolOrderInToolbar: (toolsOrderInToolbar: string[][]) => void
-    setOpenAIKey: (key: string) => void
 }
 
 
@@ -266,53 +237,28 @@ export const useModelStore = create<ModelState & ModelAction>()((set, get) => ({
     getSelectedTool: () => tools[get().selectedTool],
     executePrompt: async (executablePrompt) => {
         const logEvent = useStudyStore.getState().logEvent;
-
         const uniqueId = Math.random().toString(36).substring(7);
+        const engine = getEngine();
 
-        if (executablePrompt.response_format) {
-            const completion = openai.beta.chat.completions.parse({
-                model: executablePrompt.model ? executablePrompt.model : 'gpt-4o',
-                messages: [{ role: 'user', content: executablePrompt.prompt }],
-                temperature: 0,
-                response_format: zodResponseFormat(executablePrompt.response_format.zodObject, executablePrompt.response_format.name)
-            })
+        const stream = await engine.chat.completions.create({
+            messages: [{ role: 'user', content: executablePrompt.prompt }],
+            stream: true,
+            temperature: 0,
+            response_format: executablePrompt.json ? { type: "json_object" } : undefined,
+        });
 
-            logEvent("PROMPT_SENT_TO_GPT", {...executablePrompt, uniqueId: uniqueId});
+        logEvent("PROMPT_SENT_TO_GPT", {...executablePrompt, uniqueId: uniqueId});
 
-            return new Promise<PromptResult>(async (resolve, reject) => {
-                completion.then((result) => {
-                    const message = result.choices[0]?.message;
-                    if (message?.parsed) {
-                        logEvent("RESULT_FROM_GPT", {uniqueId: uniqueId, response: message.content});
-        
-                        resolve({ result: message.content || "", parsed: message.parsed });
-                    }
-                });
-            });
+        return new Promise<PromptResult>(async (resolve, reject) => {
+            let completeResult = "";
+            for await (const chunk of stream) {
+                const chunkStr = chunk.choices[0]?.delta?.content || '';
+                completeResult += chunkStr;
+            }
+            logEvent("RESULT_FROM_GPT", {uniqueId: uniqueId, response: completeResult});
 
-            
-        } else {
-            const stream = await openai.chat.completions.create({
-                model: executablePrompt.model ? executablePrompt.model : 'gpt-4o',
-                messages: [{ role: 'user', content: executablePrompt.prompt }],
-                stream: true,
-                temperature: 0,
-                response_format: executablePrompt.json ? { "type": "json_object" } : undefined,
-            });
-    
-            logEvent("PROMPT_SENT_TO_GPT", {...executablePrompt, uniqueId: uniqueId});
-    
-            return new Promise<PromptResult>(async (resolve, reject) => {
-                let completeResult = "";
-                for await (const chunk of stream) {
-                    const chunkStr = chunk.choices[0]?.delta?.content || '';
-                    completeResult += chunkStr;
-                }
-                logEvent("RESULT_FROM_GPT", {uniqueId: uniqueId, response: completeResult});
-    
-                resolve({ result: completeResult });
-            });
-        }
+            resolve({ result: completeResult });
+        });
     },
     setTextFields: (textFields) => {
         const previousTextFields = get().textFields;
@@ -666,9 +612,6 @@ export const useModelStore = create<ModelState & ModelAction>()((set, get) => ({
         set((state) => ({ tone: tone }))
     },
     setToolOrderInToolbar: (toolsOrderInToolbar) => set((state) => ({ toolsOrderInToolbar: toolsOrderInToolbar })),
-    setOpenAIKey: (key) => {
-        openai.apiKey = key;
-      },
 }))
 
 
